@@ -14,14 +14,42 @@
 
 require "ostruct"
 
+# HACK
+class OpenStruct
+  def initialize(hash=nil)
+    @table = {}
+    if hash
+      for k,v in hash
+        add_member k, v
+      end
+    end
+  end
+
+  protected
+    # if OpenStruct implemented add_member, it would make it easier to extend.
+    # see below.
+    def add_member k, v
+      @table[new_ostruct_member(k)] = v
+    end
+
+    # modifiable returns self
+    def []= k,v
+      add_member k,v
+    end
+
+    alias_method :old_modifiable, :modifiable
+
+    def modifiable
+      old_modifiable
+      self
+    end
+end
+
 class DeepStruct < OpenStruct
   def self.convert obj
     case obj
     when Hash
-      keys = obj.keys
-      values = obj.values
-
-      new Hash[ keys.zip( convert values ) ]
+      new obj
     when Array
       obj.map{|o| convert o }
     else
@@ -33,16 +61,7 @@ class DeepStruct < OpenStruct
     alias_method :[], :convert
   end
 
-  # HACK patch for ostruct
-  def initialize(hash=nil)
-    @table = {}
-    if hash
-      for k,v in hash
-        add_member k, v
-      end
-    end
-  end
-
+  # I would like to see these in OpenStruct as well
   def member? mem
     @table.has_key? mem
   end
@@ -53,16 +72,10 @@ class DeepStruct < OpenStruct
 
   protected
     # HACK ostruct should really implement it's own add_member
-    def modifiable
+    def add_member k, v
+      v = self.class.convert v
       super
-      self
     end
-
-    def add_member key, value
-      @table[new_ostruct_member(key)] = self.class[ value ]
-    end
-
-    alias_method :[]=, :add_member
 end
 
 class Object
