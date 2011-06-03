@@ -1,5 +1,3 @@
-require "json"
-require "open-uri"
 require "minitest/autorun"
 
 require "deep_struct"
